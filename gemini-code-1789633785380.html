@@ -1,0 +1,1506 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>แสวง: Dead Zone Thailand</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            font-family: 'Sarabun', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #050505;
+            color: #fff;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas3d {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* HUD Overlay */
+        #hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 15px;
+            box-sizing: border-box;
+        }
+
+        .hud-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .hud-card {
+            background: rgba(15, 20, 25, 0.88);
+            border: 1px solid rgba(255, 180, 50, 0.4);
+            border-radius: 8px;
+            padding: 12px 16px;
+            backdrop-filter: blur(6px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+            pointer-events: auto;
+        }
+
+        .player-status {
+            min-width: 260px;
+        }
+
+        .status-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .player-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #ffcc00;
+            text-shadow: 0 0 5px rgba(255, 204, 0, 0.5);
+        }
+
+        .level-badge {
+            background: #ff5500;
+            color: #fff;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .bar-container {
+            margin-bottom: 6px;
+        }
+
+        .bar-label {
+            font-size: 11px;
+            color: #aaa;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: #222;
+            border-radius: 5px;
+            overflow: hidden;
+            border: 1px solid #444;
+        }
+
+        .progress-fill {
+            height: 100%;
+            transition: width 0.2s ease;
+        }
+
+        .fill-hp { background: linear-gradient(90deg, #ff3333, #ff6666); }
+        .fill-armor { background: linear-gradient(90deg, #3399ff, #66ccff); }
+        .fill-xp { background: linear-gradient(90deg, #ffaa00, #ffee55); }
+
+        .mission-card {
+            text-align: right;
+            max-width: 320px;
+        }
+
+        .mission-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #ffaa00;
+        }
+
+        .mission-sub {
+            font-size: 13px;
+            color: #ddd;
+            margin-top: 4px;
+        }
+
+        .hud-center-msg {
+            position: absolute;
+            top: 25%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            font-size: 22px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 0 10px #ff3300;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px 25px;
+            border-radius: 20px;
+            border: 1px solid #ff5500;
+        }
+
+        .hud-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .controls-hint {
+            font-size: 12px;
+            color: #bbb;
+            background: rgba(0,0,0,0.65);
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid #333;
+        }
+
+        .weapon-card {
+            text-align: right;
+            min-width: 220px;
+        }
+
+        .weapon-name {
+            font-size: 16px;
+            font-weight: bold;
+            color: #55ffff;
+        }
+
+        .ammo-display {
+            font-size: 28px;
+            font-weight: bold;
+            color: #fff;
+            margin-top: 2px;
+        }
+
+        .ammo-sub {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .action-btn {
+            background: linear-gradient(180deg, #ff8800, #cc5500);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            transition: transform 0.1s, background 0.2s;
+            pointer-events: auto;
+        }
+
+        .action-btn:hover {
+            transform: scale(1.05);
+            background: linear-gradient(180deg, #ffa022, #dd6600);
+        }
+
+        /* Modal Overlay */
+        .modal {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-box {
+            background: #12161f;
+            border: 2px solid #ff6600;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 750px;
+            max-height: 85vh;
+            overflow-y: auto;
+            padding: 24px;
+            box-shadow: 0 0 30px rgba(255, 102, 0, 0.3);
+            color: #eee;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #333;
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+        }
+
+        .modal-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ffaa00;
+        }
+
+        .close-btn {
+            background: #ff3333;
+            color: white;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        @media (max-width: 600px) {
+            .grid-2 { grid-template-columns: 1fr; }
+        }
+
+        .shop-item {
+            background: #1a2230;
+            border: 1px solid #334455;
+            border-radius: 8px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .shop-item.active-item {
+            border-color: #00ffcc;
+            background: #162d3a;
+        }
+
+        .shop-item-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #ffcc00;
+            margin-bottom: 4px;
+        }
+
+        .shop-item-desc {
+            font-size: 12px;
+            color: #aaa;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .shop-item-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .price-tag {
+            font-weight: bold;
+            color: #ffee55;
+            font-size: 13px;
+        }
+
+        /* Floating interaction prompt */
+        #interact-prompt {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.85);
+            border: 1px solid #55ff55;
+            color: #55ff55;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            display: none;
+            pointer-events: none;
+            animation: pulse 1s infinite alternate;
+        }
+
+        @keyframes pulse {
+            0% { transform: translateX(-50%) scale(1); }
+            100% { transform: translateX(-50%) scale(1.08); }
+        }
+
+        /* Screen Flash for damage */
+        #damage-flash {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 0, 0, 0.25);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s ease-out;
+        }
+    </style>
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="canvas3d"></canvas>
+    <div id="damage-flash"></div>
+
+    <!-- HUD Overlay -->
+    <div id="hud">
+        <div class="hud-top">
+            <div class="hud-card player-status">
+                <div class="status-header">
+                    <span class="player-name">แสวง (Sawaeng)</span>
+                    <span class="level-badge" id="lbl-level">Lv.1</span>
+                </div>
+                
+                <div class="bar-container">
+                    <div class="bar-label"><span>พลังชีวิต (HP)</span><span id="lbl-hp">100/100</span></div>
+                    <div class="progress-bar"><div id="bar-hp" class="progress-fill fill-hp" style="width: 100%;"></div></div>
+                </div>
+
+                <div class="bar-container">
+                    <div class="bar-label"><span>ชุดเกราะ (Armor)</span><span id="lbl-armor">50/50</span></div>
+                    <div class="progress-bar"><div id="bar-armor" class="progress-fill fill-armor" style="width: 100%;"></div></div>
+                </div>
+
+                <div class="bar-container">
+                    <div class="bar-label"><span>ประสบการณ์ (XP)</span><span id="lbl-xp">0/100</span></div>
+                    <div class="progress-bar"><div id="bar-xp" class="progress-fill fill-xp" style="width: 0%;"></div></div>
+                </div>
+            </div>
+
+            <div class="hud-card mission-card">
+                <div class="mission-title" id="lbl-stage-name">ด่าน 1: โรงพยาบาลร้าง</div>
+                <div class="mission-sub" id="lbl-objective">กำจัดศัตรู และสำรวจพื้นที่</div>
+                <div style="margin-top: 8px; font-size: 13px; color: #ffcc00;">
+                    💰 เครดิต: <span id="lbl-credits">0</span> | 💊 กล่องปฐมพยาบาล: <span id="lbl-medkits">2</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="center-msg" class="hud-center-msg">เข้าสู่เขตกักกันเชื้อ!</div>
+
+        <div class="hud-bottom">
+            <div class="controls-hint">
+                🕹️ <b>การควบคุม:</b><br>
+                WASD = เดิน | เม้าส์ = เล็งยิง<br>
+                คลิกซ้าย = ยิง | R = รีโหลด<br>
+                E = เก็บของ/คุย | I = เมนูอัปเกรด<br>
+                1 = ใช้ Medkit (เติมเลือด)
+            </div>
+
+            <div style="display: flex; gap: 10px; align-items: flex-end;">
+                <button class="action-btn" onclick="toggleInventory()">🎒 กระเป๋า & อัปเกรด (I)</button>
+
+                <div class="hud-card weapon-card">
+                    <div class="weapon-name" id="lbl-weapon-name">ปืนพก 9mm (Lv.1)</div>
+                    <div class="ammo-display"><span id="lbl-ammo-clip">12</span> / <span id="lbl-ammo-reserve">120</span></div>
+                    <div class="ammo-sub" id="lbl-weapon-status">พร้อมใช้งาน (กด R เพื่อรีโหลด)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Interaction Prompt -->
+    <div id="interact-prompt">กด [ E ] เพื่อโต้ตอบ / เก็บไอเทม</div>
+
+    <!-- Inventory & Upgrade Modal -->
+    <div id="inventory-modal" class="modal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title">🛠️ คลังไอเทม & ระบบอัปเกรดแสวง</div>
+                <button class="close-btn" onclick="toggleInventory()">✕</button>
+            </div>
+
+            <div style="margin-bottom: 15px; color: #aaa; font-size: 14px;">
+                ใช้เครดิตจากการกำจัดศัตรูเพื่ออัปเกรดอาวุธและชุดเกราะเพื่อต่อสู้ในด่านที่ยากขึ้น
+            </div>
+
+            <h3 style="color: #ffaa00; margin-bottom: 10px;">🔫 คลังอาวุธ (Weapons Lv.1–5)</h3>
+            <div id="weapon-shop-list" class="grid-2" style="margin-bottom: 20px;"></div>
+
+            <h3 style="color: #3399ff; margin-bottom: 10px;">🛡️ ชุดเกราะ Tactical (Armor Lv.1–5)</h3>
+            <div id="armor-shop-list" class="grid-2"></div>
+        </div>
+    </div>
+
+    <!-- Game Over / Victory Modal -->
+    <div id="endgame-modal" class="modal">
+        <div class="modal-box" style="text-align: center;">
+            <h1 id="endgame-title" style="font-size: 32px; color: #ff3333; margin-bottom: 15px;">คุณถูกทำร้ายจนหมดสติ</h1>
+            <p id="endgame-desc" style="font-size: 15px; color: #ccc; margin-bottom: 20px;">ฝูงซอมบี้และสิ่งลี้ลับได้เข้าจู่โจมพื้นที่...</p>
+            <button class="action-btn" style="font-size: 18px; padding: 12px 30px;" onclick="restartStage()">ลองใหม่อีกครั้ง</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// --- AUDIO SYSTEM (Web Audio API Synthesizer) ---
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+
+function initAudio() {
+    if (!audioCtx) audioCtx = new AudioCtx();
+}
+
+function playSound(type) {
+    if (!audioCtx) return;
+    try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        const now = audioCtx.currentTime;
+
+        if (type === 'shoot') {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(300, now);
+            osc.frequency.exponentialRampToValueAtTime(40, now + 0.12);
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.linearRampToValueAtTime(0.01, now + 0.12);
+            osc.start(now);
+            osc.stop(now + 0.12);
+        } else if (type === 'hit') {
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(150, now);
+            osc.frequency.linearRampToValueAtTime(30, now + 0.1);
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
+            osc.start(now);
+            osc.stop(now + 0.1);
+        } else if (type === 'pickup') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(400, now);
+            osc.frequency.exponentialRampToValueAtTime(800, now + 0.15);
+            gain.gain.setValueAtTime(0.25, now);
+            gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+            osc.start(now);
+            osc.stop(now + 0.15);
+        } else if (type === 'heal') {
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(250, now);
+            osc.frequency.exponentialRampToValueAtTime(600, now + 0.3);
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+            osc.start(now);
+            osc.stop(now + 0.3);
+        } else if (type === 'reload') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(200, now);
+            osc.frequency.linearRampToValueAtTime(350, now + 0.2);
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+            osc.start(now);
+            osc.stop(now + 0.2);
+        }
+    } catch(e) {}
+}
+
+// --- DATA CONFIGURATION ---
+const WEAPONS = [
+    { name: "ปืนพก 9mm (Lv.1)", damage: 28, fireRate: 320, magSize: 12, ammo: 12, reserveAmmo: 120, range: 25, reqLevel: 1, cost: 0, unlocked: true },
+    { name: "ปืนลูกซองกระจาย (Lv.2)", damage: 70, fireRate: 600, magSize: 6, ammo: 6, reserveAmmo: 60, range: 18, reqLevel: 2, cost: 150, unlocked: false },
+    { name: "ปืนไรเฟิล AK-47 (Lv.3)", damage: 48, fireRate: 140, magSize: 30, ammo: 30, reserveAmmo: 210, range: 32, reqLevel: 3, cost: 350, unlocked: false },
+    { name: "ปืนกลเบา Vector (Lv.4)", damage: 40, fireRate: 85, magSize: 40, ammo: 40, reserveAmmo: 240, range: 28, reqLevel: 4, cost: 600, unlocked: false },
+    { name: "ปืนสไนเปอร์พลาสมา (Lv.5)", damage: 190, fireRate: 800, magSize: 5, ammo: 5, reserveAmmo: 45, range: 45, reqLevel: 5, cost: 1000, unlocked: false }
+];
+
+const ARMORS = [
+    { name: "ชุดเกราะผ้าปานกลาง (Lv.1)", defense: 0.15, maxArmor: 50, cost: 0, unlocked: true },
+    { name: "เกราะอ่อนตำรวจ (Lv.2)", defense: 0.30, maxArmor: 80, cost: 200, unlocked: false },
+    { name: "เกราะ Tactical ทหาร (Lv.3)", defense: 0.45, maxArmor: 120, cost: 450, unlocked: false },
+    { name: "เกราะคอมมานโดพิเศษ (Lv.4)", defense: 0.60, maxArmor: 160, cost: 750, unlocked: false },
+    { name: "เกราะไฮเทคป้องกันพิษ (Lv.5)", defense: 0.75, maxArmor: 220, cost: 1200, unlocked: false }
+];
+
+const STAGES = [
+    {
+        name: "ด่าน 1: โรงพยาบาลร้าง",
+        obj: "กำจัดซอมบี้ผีปอบรอบอาคาร และค้นหาทางออก",
+        bgColor: 0x11151c,
+        fogColor: 0x11151c,
+        groundColor: 0x333d4a,
+        enemies: [ { type: 'pop', count: 6 } ],
+        themeProps: 'hospital'
+    },
+    {
+        name: "ด่าน 2: สนามหลวง",
+        obj: "รับมือกับฝูงผีปอบและปอบกลายพันธุ์กลางสนามหญ้า",
+        bgColor: 0x1c160e,
+        fogColor: 0x2b2015,
+        groundColor: 0x384a22,
+        enemies: [ { type: 'pop', count: 8 }, { type: 'pop_mutant', count: 3 } ],
+        themeProps: 'sanam_luang'
+    },
+    {
+        name: "ด่าน 3: วัดโบราณ",
+        obj: "ระวังผีกระสือบนฟ้า กุมารดำ และค้นหากุมารทอง",
+        bgColor: 0x150d1a,
+        fogColor: 0x1f1226,
+        groundColor: 0x4a3d2c,
+        enemies: [ { type: 'pop', count: 6 }, { type: 'krasue', count: 4 }, { type: 'kuman_black', count: 2 }, { type: 'kuman_gold', count: 1 } ],
+        themeProps: 'temple'
+    },
+    {
+        name: "ด่าน 4: หมู่บ้านชนบทอีสาน",
+        obj: "เอาชีวิตรอดจากศัตรูระลอกใหญ่ในหมู่บ้าน",
+        bgColor: 0x241d0f,
+        fogColor: 0x382c16,
+        groundColor: 0x475e2b,
+        enemies: [ { type: 'pop', count: 10 }, { type: 'pop_mutant', count: 5 }, { type: 'krasue', count: 3 } ],
+        themeProps: 'village'
+    },
+    {
+        name: "ด่าน 5: สถานีตำรวจเขตกักกัน",
+        obj: "ปะทะ Boss ผีเปรต ร่างยักษ์และศัตรูระดับสูง",
+        bgColor: 0x0f1521,
+        fogColor: 0x152033,
+        groundColor: 0x2c333d,
+        enemies: [ { type: 'pop_mutant', count: 6 }, { type: 'pret_boss', count: 1 }, { type: 'kuman_black', count: 3 } ],
+        themeProps: 'police'
+    },
+    {
+        name: "ด่านสุดท้าย: จุด Extraction (ถอนกำลัง)",
+        obj: "ต้านทานฝูงศัตรูระลอกสุดท้ายและขึ้นเฮลิคอปเตอร์หลบหนี!",
+        bgColor: 0x1a0a0a,
+        fogColor: 0x2e0f0f,
+        groundColor: 0x3a2323,
+        enemies: [ { type: 'pop', count: 10 }, { type: 'pop_mutant', count: 6 }, { type: 'krasue', count: 5 }, { type: 'pret_boss', count: 1 } ],
+        themeProps: 'extraction'
+    }
+];
+
+// Player State
+let player = {
+    x: 0, z: 0,
+    hp: 100, maxHp: 100,
+    armor: 50, maxArmor: 50,
+    level: 1, xp: 0, maxXp: 100,
+    credits: 120,
+    medkits: 2,
+    speed: 0.15,
+    currentWeaponIdx: 0,
+    currentArmorIdx: 0,
+    isReloading: false,
+    lastShotTime: 0,
+    mesh: null
+};
+
+let currentStageIndex = 0;
+let enemies = [];
+let bullets = [];
+let dropItems = [];
+let sceneryObjects = [];
+let extractionPoint = null;
+let isStageCleared = false;
+let keys = {};
+let mousePos3D = new THREE.Vector3();
+
+// THREE.JS Engine setup
+let scene, camera, renderer, raycaster, mouseVector, plane;
+
+function initThree() {
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x11151c);
+    scene.fog = new THREE.FogExp2(0x11151c, 0.025);
+
+    camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 22, 16);
+    camera.lookAt(0, 0, 0);
+
+    renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas3d'), antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+
+    // Lights
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffddaa, 0.85);
+    dirLight.position.set(20, 40, 20);
+    dirLight.castShadow = true;
+    scene.add(dirLight);
+
+    // Ground Plane for Raycasting
+    const groundGeo = new THREE.PlaneGeometry(120, 120);
+    const groundMat = new THREE.MeshStandardMaterial({ color: 0x333d4a, roughness: 0.8 });
+    plane = new THREE.Mesh(groundGeo, groundMat);
+    plane.rotation.x = -Math.PI / 2;
+    plane.receiveShadow = true;
+    scene.add(plane);
+
+    raycaster = new THREE.Raycaster();
+    mouseVector = new THREE.Vector2();
+
+    // Create Player Mesh (Sawaeng block character)
+    createPlayerMesh();
+
+    // Listeners
+    window.addEventListener('resize', onWindowResize);
+    window.addEventListener('keydown', e => {
+        initAudio();
+        keys[e.key.toLowerCase()] = true;
+        if (e.key === '1') useMedkit();
+        if (e.key.toLowerCase() === 'r') reloadWeapon();
+        if (e.key.toLowerCase() === 'i') toggleInventory();
+        if (e.key.toLowerCase() === 'e') checkInteractions();
+    });
+    window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mousedown', e => {
+        if (e.button === 0) fireWeapon();
+    });
+
+    loadStage(0);
+    animate();
+}
+
+// --- PLAYER CREATION ---
+function createPlayerMesh() {
+    const group = new THREE.Group();
+
+    // Body (Blue Shirt matching user reference image)
+    const bodyGeo = new THREE.BoxGeometry(0.8, 1.0, 0.5);
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x1e5abc });
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    body.position.y = 1.0;
+    body.castShadow = true;
+    group.add(body);
+
+    // Head
+    const headGeo = new THREE.BoxGeometry(0.6, 0.6, 0.6);
+    const headMat = new THREE.MeshStandardMaterial({ color: 0xffdbac });
+    const head = new THREE.Mesh(headGeo, headMat);
+    head.position.y = 1.8;
+    head.castShadow = true;
+    group.add(head);
+
+    // Hair (Pale blonde/grey hair)
+    const hairGeo = new THREE.BoxGeometry(0.65, 0.25, 0.65);
+    const hairMat = new THREE.MeshStandardMaterial({ color: 0xd4c2a5 });
+    const hair = new THREE.Mesh(hairGeo, hairMat);
+    hair.position.y = 2.1;
+    group.add(hair);
+
+    // Legs (Dark Pants)
+    const legGeo = new THREE.BoxGeometry(0.35, 0.8, 0.4);
+    const legMat = new THREE.MeshStandardMaterial({ color: 0x1c1c1c });
+    const legL = new THREE.Mesh(legGeo, legMat);
+    legL.position.set(-0.2, 0.4, 0);
+    group.add(legL);
+
+    const legR = legL.clone();
+    legR.position.set(0.2, 0.4, 0);
+    group.add(legR);
+
+    // Tactical Gun Mesh
+    const gunGeo = new THREE.BoxGeometry(0.15, 0.15, 0.8);
+    const gunMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+    const gun = new THREE.Mesh(gunGeo, gunMat);
+    gun.position.set(0.4, 1.1, 0.4);
+    group.add(gun);
+
+    scene.add(group);
+    player.mesh = group;
+}
+
+// --- STAGE BUILDING ---
+function loadStage(idx) {
+    currentStageIndex = idx;
+    const stage = STAGES[idx];
+    isStageCleared = false;
+
+    // Clear previous objects
+    enemies.forEach(e => scene.remove(e.mesh));
+    bullets.forEach(b => scene.remove(b.mesh));
+    dropItems.forEach(d => scene.remove(d.mesh));
+    sceneryObjects.forEach(s => scene.remove(s));
+    if (extractionPoint) scene.remove(extractionPoint.mesh);
+
+    enemies = [];
+    bullets = [];
+    dropItems = [];
+    sceneryObjects = [];
+    extractionPoint = null;
+
+    // Set colors & fog
+    scene.background.setHex(stage.bgColor);
+    scene.fog.color.setHex(stage.fogColor);
+    plane.material.color.setHex(stage.groundColor);
+
+    // Reset player position
+    player.x = 0;
+    player.z = 15;
+    if (player.mesh) player.mesh.position.set(player.x, 0, player.z);
+
+    // Build Environment Scenery
+    buildEnvironment(stage.themeProps);
+
+    // Spawn Enemies
+    stage.enemies.forEach(group => {
+        for (let i = 0; i < group.count; i++) {
+            spawnEnemy(group.type);
+        }
+    });
+
+    updateHUD();
+    showCenterMessage(stage.name, 2500);
+}
+
+function buildEnvironment(theme) {
+    // Stage boundaries
+    for (let x = -30; x <= 30; x += 10) {
+        createWall(x, -30, 8, 2, 0.5);
+        createWall(x, 30, 8, 2, 0.5);
+    }
+
+    if (theme === 'temple' || theme === 'sanam_luang') {
+        // Thai Spirit Houses (ศาลพระภูมิ like in reference images!)
+        for (let i = 0; i < 4; i++) {
+            const rx = (Math.random() - 0.5) * 40;
+            const rz = (Math.random() - 0.5) * 30 - 5;
+            createSpiritHouse(rx, rz);
+        }
+        // Palm / Banana Trees (like in reference image)
+        for (let i = 0; i < 12; i++) {
+            const rx = (Math.random() - 0.5) * 50;
+            const rz = (Math.random() - 0.5) * 40;
+            if (Math.hypot(rx, rz - 15) > 6) createTree(rx, rz);
+        }
+    } else if (theme === 'hospital' || theme === 'police') {
+        // Concrete pillars & barriers
+        for (let i = 0; i < 8; i++) {
+            const rx = (Math.random() - 0.5) * 40;
+            const rz = (Math.random() - 0.5) * 30;
+            createWall(rx, rz, 3, 3, 3, 0x556677);
+        }
+    } else if (theme === 'village' || theme === 'extraction') {
+        // Wooden Huts & trees
+        for (let i = 0; i < 5; i++) {
+            const rx = (Math.random() - 0.5) * 44;
+            const rz = (Math.random() - 0.5) * 30 - 5;
+            createHut(rx, rz);
+        }
+        for (let i = 0; i < 10; i++) {
+            createTree((Math.random() - 0.5) * 50, (Math.random() - 0.5) * 40);
+        }
+    }
+}
+
+function createSpiritHouse(x, z) {
+    const group = new THREE.Group();
+    // Stand
+    const standGeo = new THREE.BoxGeometry(0.4, 2.0, 0.4);
+    const standMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b });
+    const stand = new THREE.Mesh(standGeo, standMat);
+    stand.position.y = 1.0;
+    group.add(stand);
+
+    // Shrine Box
+    const boxGeo = new THREE.BoxGeometry(1.6, 1.2, 1.4);
+    const boxMat = new THREE.MeshStandardMaterial({ color: 0x653b11 });
+    const box = new THREE.Mesh(boxGeo, boxMat);
+    box.position.y = 2.4;
+    group.add(box);
+
+    // Red Roof
+    const roofGeo = new THREE.ConeGeometry(1.4, 0.8, 4);
+    const roofMat = new THREE.MeshStandardMaterial({ color: 0xcc2222 });
+    const roof = new THREE.Mesh(roofGeo, roofMat);
+    roof.position.y = 3.3;
+    roof.rotation.y = Math.PI / 4;
+    group.add(roof);
+
+    group.position.set(x, 0, z);
+    scene.add(group);
+    sceneryObjects.push(group);
+}
+
+function createTree(x, z) {
+    const group = new THREE.Group();
+    const trunkGeo = new THREE.CylinderGeometry(0.2, 0.3, 2.5, 6);
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5c4033 });
+    const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+    trunk.position.y = 1.25;
+    group.add(trunk);
+
+    // Palm Leaves (cross shape block leaves like image)
+    const leafMat = new THREE.MeshStandardMaterial({ color: 0x228b22 });
+    for (let i = 0; i < 4; i++) {
+        const leafGeo = new THREE.BoxGeometry(2.2, 0.15, 0.6);
+        const leaf = new THREE.Mesh(leafGeo, leafMat);
+        leaf.position.y = 2.5;
+        leaf.rotation.y = (Math.PI / 2) * i;
+        group.add(leaf);
+    }
+    group.position.set(x, 0, z);
+    scene.add(group);
+    sceneryObjects.push(group);
+}
+
+function createHut(x, z) {
+    const group = new THREE.Group();
+    const baseGeo = new THREE.BoxGeometry(4, 2.5, 4);
+    const baseMat = new THREE.MeshStandardMaterial({ color: 0x7a5230 });
+    const base = new THREE.Mesh(baseGeo, baseMat);
+    base.position.y = 1.25;
+    group.add(base);
+
+    const roofGeo = new THREE.ConeGeometry(3.2, 1.5, 4);
+    const roofMat = new THREE.MeshStandardMaterial({ color: 0x996633 });
+    const roof = new THREE.Mesh(roofGeo, roofMat);
+    roof.position.y = 3.25;
+    roof.rotation.y = Math.PI / 4;
+    group.add(roof);
+
+    group.position.set(x, 0, z);
+    scene.add(group);
+    sceneryObjects.push(group);
+}
+
+function createWall(x, z, w, h, d, color=0x333333) {
+    const geo = new THREE.BoxGeometry(w, h, d);
+    const mat = new THREE.MeshStandardMaterial({ color: color });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(x, h/2, z);
+    scene.add(mesh);
+    sceneryObjects.push(mesh);
+}
+
+// --- ENEMY SPAWNING ---
+function spawnEnemy(type) {
+    let spawnX = (Math.random() - 0.5) * 50;
+    let spawnZ = (Math.random() - 0.5) * 40 - 10;
+
+    let e = {
+        type: type,
+        x: spawnX, z: spawnZ,
+        hp: 100, maxHp: 100,
+        speed: 0.06,
+        damage: 12,
+        attackCooldown: 0,
+        mesh: null,
+        floatingHeight: 0
+    };
+
+    const group = new THREE.Group();
+
+    if (type === 'pop') {
+        // Basic Zombie (Dark Pop with glowing red eyes)
+        e.hp = e.maxHp = 80;
+        e.speed = 0.055;
+        e.damage = 10;
+        
+        const bodyGeo = new THREE.BoxGeometry(0.8, 1.0, 0.5);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x223322 });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.position.y = 1.0;
+        group.add(body);
+
+        const headGeo = new THREE.BoxGeometry(0.6, 0.6, 0.6);
+        const headMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+        const head = new THREE.Mesh(headGeo, headMat);
+        head.position.y = 1.8;
+        group.add(head);
+
+        // Glowing Red Eyes
+        const eyeGeo = new THREE.BoxGeometry(0.15, 0.1, 0.1);
+        const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+        eyeL.position.set(-0.18, 1.85, 0.3);
+        const eyeR = eyeL.clone();
+        eyeR.position.x = 0.18;
+        group.add(eyeL); group.add(eyeR);
+
+    } else if (type === 'pop_mutant') {
+        // Mutated Pop (Faster, High HP)
+        e.hp = e.maxHp = 160;
+        e.speed = 0.095;
+        e.damage = 18;
+
+        const bodyGeo = new THREE.BoxGeometry(1.0, 1.2, 0.7);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x551111 });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.position.y = 1.1;
+        group.add(body);
+
+        const headGeo = new THREE.BoxGeometry(0.7, 0.7, 0.7);
+        const headMat = new THREE.MeshStandardMaterial({ color: 0x330000 });
+        const head = new THREE.Mesh(headGeo, headMat);
+        head.position.y = 2.05;
+        group.add(head);
+
+    } else if (type === 'krasue') {
+        // Krasue (Flying floating head with glowing viscera)
+        e.hp = e.maxHp = 120;
+        e.speed = 0.07;
+        e.damage = 15;
+        e.floatingHeight = 2.8;
+
+        const headGeo = new THREE.SphereGeometry(0.45, 8, 8);
+        const headMat = new THREE.MeshStandardMaterial({ color: 0x221122 });
+        const head = new THREE.Mesh(headGeo, headMat);
+        head.position.y = e.floatingHeight;
+        group.add(head);
+
+        // Glowing red heart below head
+        const gutGeo = new THREE.DodecahedronGeometry(0.35);
+        const gutMat = new THREE.MeshBasicMaterial({ color: 0xff2200 });
+        const gut = new THREE.Mesh(gutGeo, gutMat);
+        gut.position.y = e.floatingHeight - 0.5;
+        group.add(gut);
+
+    } else if (type === 'pret_boss') {
+        // Pret Boss (Giant tall boss)
+        e.hp = e.maxHp = 1200;
+        e.speed = 0.038;
+        e.damage = 35;
+
+        const bodyGeo = new THREE.BoxGeometry(1.6, 4.5, 1.2);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.position.y = 2.25;
+        group.add(body);
+
+        const headGeo = new THREE.BoxGeometry(1.0, 1.2, 1.0);
+        const headMat = new THREE.MeshStandardMaterial({ color: 0x660000 });
+        const head = new THREE.Mesh(headGeo, headMat);
+        head.position.y = 5.0;
+        group.add(head);
+
+    } else if (type === 'kuman_gold') {
+        // Golden Kuman Thong (Friendly entity)
+        e.hp = e.maxHp = 50;
+        e.speed = 0.0;
+        e.damage = 0;
+        e.isFriendly = true;
+
+        const bodyGeo = new THREE.BoxGeometry(0.5, 0.7, 0.4);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, metalness: 0.8, roughness: 0.2 });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.position.y = 0.35;
+        group.add(body);
+
+    } else if (type === 'kuman_black') {
+        // Black Kuman Thong (Hostile small fast sneak enemy)
+        e.hp = e.maxHp = 70;
+        e.speed = 0.11;
+        e.damage = 14;
+
+        const bodyGeo = new THREE.BoxGeometry(0.5, 0.7, 0.4);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.position.y = 0.35;
+        group.add(body);
+    }
+
+    group.position.set(spawnX, 0, spawnZ);
+    scene.add(group);
+    e.mesh = group;
+    enemies.push(e);
+}
+
+// --- SHOOTING & WEAPONS ---
+function fireWeapon() {
+    const now = performance.now();
+    const w = WEAPONS[player.currentWeaponIdx];
+
+    if (player.isReloading) return;
+    if (now - player.lastShotTime < w.fireRate) return;
+    if (w.ammo <= 0) {
+        reloadWeapon();
+        return;
+    }
+
+    w.ammo--;
+    player.lastShotTime = now;
+    playSound('shoot');
+    updateHUD();
+
+    // Create Bullet Projectile
+    const bulletGeo = new THREE.SphereGeometry(0.15, 4, 4);
+    const bulletMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+    const bullet = new THREE.Mesh(bulletGeo, bulletMat);
+
+    const dir = new THREE.Vector3().subVectors(mousePos3D, player.mesh.position).normalize();
+    dir.y = 0;
+
+    bullet.position.copy(player.mesh.position);
+    bullet.position.y = 1.2;
+
+    scene.add(bullet);
+    bullets.push({
+        mesh: bullet,
+        dir: dir,
+        damage: w.damage,
+        range: w.range,
+        traveled: 0
+    });
+}
+
+function reloadWeapon() {
+    const w = WEAPONS[player.currentWeaponIdx];
+    if (player.isReloading || w.ammo === w.magSize || w.reserveAmmo <= 0) return;
+
+    player.isReloading = true;
+    document.getElementById('lbl-weapon-status').innerText = "กำลังรีโหลด...";
+    playSound('reload');
+
+    setTimeout(() => {
+        const needed = w.magSize - w.ammo;
+        const toAdd = Math.min(needed, w.reserveAmmo);
+        w.ammo += toAdd;
+        w.reserveAmmo -= toAdd;
+        player.isReloading = false;
+        document.getElementById('lbl-weapon-status').innerText = "พร้อมใช้งาน (กด R เพื่อรีโหลด)";
+        updateHUD();
+    }, 1200);
+}
+
+// --- INTERACTION & DROPS ---
+function checkInteractions() {
+    // Check loot drops
+    for (let i = dropItems.length - 1; i >= 0; i--) {
+        const d = dropItems[i];
+        const dist = Math.hypot(player.x - d.x, player.z - d.z);
+        if (dist < 2.5) {
+            playSound('pickup');
+            if (d.type === 'ammo') {
+                WEAPONS[player.currentWeaponIdx].reserveAmmo += 30;
+                showCenterMessage("+30 กระสุนสำรอง!", 1200);
+            } else if (d.type === 'credits') {
+                player.credits += d.amount;
+                showCenterMessage(`+${d.amount} เครดิต!`, 1200);
+            } else if (d.type === 'medkit') {
+                player.medkits++;
+                showCenterMessage("+1 กล่องปฐมพยาบาล!", 1200);
+            }
+            scene.remove(d.mesh);
+            dropItems.splice(i, 1);
+            updateHUD();
+            return;
+        }
+    }
+
+    // Check interaction with Golden Kuman Thong
+    for (let e of enemies) {
+        if (e.isFriendly && Math.hypot(player.x - e.x, player.z - e.z) < 2.5) {
+            playSound('pickup');
+            player.credits += 150;
+            player.medkits += 1;
+            showCenterMessage("✨ กุมารทองให้พร! (+150 เครดิต, +1 Medkit)", 2000);
+            e.x = 999; // Move away
+            scene.remove(e.mesh);
+            return;
+        }
+    }
+
+    // Check extraction point
+    if (extractionPoint) {
+        const dist = Math.hypot(player.x - extractionPoint.x, player.z - extractionPoint.z);
+        if (dist < 3.0) {
+            stageCleared();
+        }
+    }
+}
+
+function spawnDropItem(x, z) {
+    const rand = Math.random();
+    let type = 'credits';
+    let color = 0xffff00;
+    let amount = Math.floor(Math.random() * 40) + 20;
+
+    if (rand < 0.4) {
+        type = 'ammo';
+        color = 0xff8800;
+    } else if (rand < 0.6) {
+        type = 'medkit';
+        color = 0x00ff88;
+    }
+
+    const geo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+    const mat = new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.4 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(x, 0.25, z);
+
+    scene.add(mesh);
+    dropItems.push({ mesh, x, z, type, amount });
+}
+
+function spawnExtractionPoint() {
+    const x = 0, z = -22;
+    const geo = new THREE.CylinderGeometry(2.5, 2.5, 0.1, 16);
+    const mat = new THREE.MeshBasicMaterial({ color: 0x00ff55, wireframe: true });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(x, 0.05, z);
+
+    scene.add(mesh);
+    extractionPoint = { mesh, x, z };
+    showCenterMessage("จุด Extraction ปรากฏแล้ว! รีบไปที่วงกลมสีเขียว!", 3000);
+}
+
+// --- MAIN GAME LOOP ---
+function animate() {
+    requestAnimationFrame(animate);
+
+    // Player Movement
+    let dx = 0, dz = 0;
+    if (keys['w'] || keys['arrowup']) dz -= 1;
+    if (keys['s'] || keys['arrowdown']) dz += 1;
+    if (keys['a'] || keys['arrowleft']) dx -= 1;
+    if (keys['d'] || keys['arrowright']) dx += 1;
+
+    if (dx !== 0 || dz !== 0) {
+        const len = Math.hypot(dx, dz);
+        player.x += (dx / len) * player.speed;
+        player.z += (dz / len) * player.speed;
+
+        player.x = Math.max(-28, Math.min(28, player.x));
+        player.z = Math.max(-28, Math.min(28, player.z));
+
+        player.mesh.position.set(player.x, 0, player.z);
+    }
+
+    // Camera follow player
+    camera.position.x += (player.x - camera.position.x) * 0.08;
+    camera.position.z += (player.z + 16 - camera.position.z) * 0.08;
+
+    // Aiming rotation
+    if (player.mesh) {
+        const angle = Math.atan2(mousePos3D.x - player.x, mousePos3D.z - player.z);
+        player.mesh.rotation.y = angle;
+    }
+
+    // Update Bullets
+    for (let i = bullets.length - 1; i >= 0; i--) {
+        const b = bullets[i];
+        const moveDist = 0.8;
+        b.mesh.position.x += b.dir.x * moveDist;
+        b.mesh.position.z += b.dir.z * moveDist;
+        b.traveled += moveDist;
+
+        let hit = false;
+        for (let j = enemies.length - 1; j >= 0; j--) {
+            const e = enemies[j];
+            if (e.isFriendly) continue;
+
+            const dist = Math.hypot(b.mesh.position.x - e.x, b.mesh.position.z - e.z);
+            if (dist < 1.2) {
+                hit = true;
+                e.hp -= b.damage;
+                playSound('hit');
+
+                if (e.hp <= 0) {
+                    spawnDropItem(e.x, e.z);
+                    addXP(e.type === 'pret_boss' ? 250 : 25);
+                    scene.remove(e.mesh);
+                    enemies.splice(j, 1);
+
+                    // Check stage clear condition
+                    const hostileEnemies = enemies.filter(en => !en.isFriendly);
+                    if (hostileEnemies.length === 0 && !isStageCleared) {
+                        spawnExtractionPoint();
+                    }
+                }
+                break;
+            }
+        }
+
+        if (hit || b.traveled >= b.range) {
+            scene.remove(b.mesh);
+            bullets.splice(i, 1);
+        }
+    }
+
+    // Update Enemies AI
+    enemies.forEach(e => {
+        if (e.isFriendly) return;
+
+        const distToPlayer = Math.hypot(player.x - e.x, player.z - e.z);
+        if (distToPlayer > 0.8) {
+            const angle = Math.atan2(player.x - e.x, player.z - e.z);
+            e.x += Math.sin(angle) * e.speed;
+            e.z += Math.cos(angle) * e.speed;
+            e.mesh.position.set(e.x, 0, e.z);
+            e.mesh.rotation.y = angle;
+        } else {
+            if (!e.attackCooldown || Date.now() - e.attackCooldown > 800) {
+                e.attackCooldown = Date.now();
+                damagePlayer(e.damage);
+            }
+        }
+    });
+
+    // Check interaction prompt visibility
+    let showPrompt = false;
+    dropItems.forEach(d => {
+        if (Math.hypot(player.x - d.x, player.z - d.z) < 2.5) showPrompt = true;
+    });
+    enemies.forEach(e => {
+        if (e.isFriendly && Math.hypot(player.x - e.x, player.z - e.z) < 2.5) showPrompt = true;
+    });
+    if (extractionPoint && Math.hypot(player.x - extractionPoint.x, player.z - extractionPoint.z) < 3.0) showPrompt = true;
+    document.getElementById('interact-prompt').style.display = showPrompt ? 'block' : 'none';
+
+    renderer.render(scene, camera);
+}
+
+// --- PLAYER STATS & PROGRESSION ---
+function damagePlayer(amount) {
+    const curArmor = ARMORS[player.currentArmorIdx];
+    const reducedDamage = amount * (1 - curArmor.defense);
+
+    if (player.armor > 0) {
+        player.armor -= reducedDamage;
+        if (player.armor < 0) {
+            player.hp += player.armor;
+            player.armor = 0;
+        }
+    } else {
+        player.hp -= reducedDamage;
+    }
+
+    const flash = document.getElementById('damage-flash');
+    flash.style.opacity = '1';
+    setTimeout(() => flash.style.opacity = '0', 150);
+
+    if (player.hp <= 0) {
+        player.hp = 0;
+        gameOver();
+    }
+    updateHUD();
+}
+
+function useMedkit() {
+    if (player.medkits > 0 && player.hp < player.maxHp) {
+        player.medkits--;
+        player.hp = Math.min(player.maxHp, player.hp + 50);
+        playSound('heal');
+        showCenterMessage("ฟื้นฟู พลังชีวิต +50 HP!", 1500);
+        updateHUD();
+    }
+}
+
+function addXP(amount) {
+    player.xp += amount;
+    if (player.xp >= player.maxXp) {
+        player.level++;
+        player.xp -= player.maxXp;
+        player.maxXp = Math.floor(player.maxXp * 1.5);
+        player.maxHp += 15;
+        player.hp = player.maxHp;
+        showCenterMessage(`🎉 เลเวลอัป! ตอนนี้ Lv.${player.level}`, 2000);
+        playSound('heal');
+    }
+    updateHUD();
+}
+
+function stageCleared() {
+    isStageCleared = true;
+    if (currentStageIndex < STAGES.length - 1) {
+        showCenterMessage("ภารกิจสำเร็จ! กำลังเดินทางไปด่านถัดไป...", 2500);
+        setTimeout(() => loadStage(currentStageIndex + 1), 2500);
+    } else {
+        document.getElementById('endgame-title').innerText = "🏆 การถอนกำลังสำเร็จ!";
+        document.getElementById('endgame-title').style.color = "#55ff55";
+        document.getElementById('endgame-desc').innerText = "แสวง สามารถเอาชีวิตรอดและเปิดเผยความจริงเกี่ยวกับเชื้อปริศนาในประเทศไทยได้สำเร็จ!";
+        document.getElementById('endgame-modal').classList.add('active');
+    }
+}
+
+function gameOver() {
+    document.getElementById('endgame-title').innerText = "💀 คุณเสียชีวิตในภารกิจ";
+    document.getElementById('endgame-title').style.color = "#ff3333";
+    document.getElementById('endgame-desc').innerText = "แสวง ถูกสิ่งลี้ลับและผีปอบทำร้ายจนไม่สามารถทำภารกิจต่อได้";
+    document.getElementById('endgame-modal').classList.add('active');
+}
+
+function restartStage() {
+    document.getElementById('endgame-modal').classList.remove('active');
+    player.hp = player.maxHp;
+    player.armor = ARMORS[player.currentArmorIdx].maxArmor;
+    loadStage(currentStageIndex);
+}
+
+// --- UI & HUD UPDATES ---
+function updateHUD() {
+    document.getElementById('lbl-level').innerText = `Lv.${player.level}`;
+    document.getElementById('lbl-hp').innerText = `${Math.ceil(player.hp)}/${player.maxHp}`;
+    document.getElementById('bar-hp').style.width = `${(player.hp / player.maxHp) * 100}%`;
+
+    const maxArm = ARMORS[player.currentArmorIdx].maxArmor;
+    document.getElementById('lbl-armor').innerText = `${Math.ceil(player.armor)}/${maxArm}`;
+    document.getElementById('bar-armor').style.width = `${(player.armor / maxArm) * 100}%`;
+
+    document.getElementById('lbl-xp').innerText = `${player.xp}/${player.maxXp}`;
+    document.getElementById('bar-xp').style.width = `${(player.xp / player.maxXp) * 100}%`;
+
+    const stage = STAGES[currentStageIndex];
+    document.getElementById('lbl-stage-name').innerText = stage.name;
+    document.getElementById('lbl-objective').innerText = stage.obj;
+    document.getElementById('lbl-credits').innerText = player.credits;
+    document.getElementById('lbl-medkits').innerText = player.medkits;
+
+    const w = WEAPONS[player.currentWeaponIdx];
+    document.getElementById('lbl-weapon-name').innerText = w.name;
+    document.getElementById('lbl-ammo-clip').innerText = w.ammo;
+    document.getElementById('lbl-ammo-reserve').innerText = w.reserveAmmo;
+}
+
+function showCenterMessage(msg, duration = 2000) {
+    const el = document.getElementById('center-msg');
+    el.innerText = msg;
+    el.style.opacity = '1';
+    setTimeout(() => { el.style.opacity = '0'; }, duration);
+}
+
+function toggleInventory() {
+    const modal = document.getElementById('inventory-modal');
+    if (modal.classList.contains('active')) {
+        modal.classList.remove('active');
+    } else {
+        renderShop();
+        modal.classList.add('active');
+    }
+}
+
+function renderShop() {
+    // Weapon Shop
+    const wList = document.getElementById('weapon-shop-list');
+    wList.innerHTML = '';
+    WEAPONS.forEach((w, idx) => {
+        const isEquipped = player.currentWeaponIdx === idx;
+        const div = document.createElement('div');
+        div.className = `shop-item ${isEquipped ? 'active-item' : ''}`;
+        div.innerHTML = `
+            <div>
+                <div class="shop-item-title">${w.name} ${isEquipped ? ' (สวมใส่อยู่)' : ''}</div>
+                <div class="shop-item-desc">พลังโจมตี: ${w.damage} | ความเร็วยิง: ${w.fireRate}ms | ความจุแม็ก: ${w.magSize}</div>
+            </div>
+            <div class="shop-item-footer">
+                <span class="price-tag">${w.unlocked ? 'ปลดล็อกแล้ว' : `ต้องการ Lv.${w.reqLevel} | 💰 ${w.cost}`}</span>
+                ${w.unlocked 
+                    ? `<button class="action-btn" onclick="equipWeapon(${idx})">${isEquipped ? 'ใช้งานอยู่' : 'สวมใส่'}</button>`
+                    : `<button class="action-btn" onclick="buyWeapon(${idx})">ปลดล็อก</button>`}
+            </div>
+        `;
+        wList.appendChild(div);
+    });
+
+    // Armor Shop
+    const aList = document.getElementById('armor-shop-list');
+    aList.innerHTML = '';
+    ARMORS.forEach((a, idx) => {
+        const isEquipped = player.currentArmorIdx === idx;
+        const div = document.createElement('div');
+        div.className = `shop-item ${isEquipped ? 'active-item' : ''}`;
+        div.innerHTML = `
+            <div>
+                <div class="shop-item-title">${a.name} ${isEquipped ? ' (สวมใส่อยู่)' : ''}</div>
+                <div class="shop-item-desc">การลดความเสียหาย: ${a.defense * 100}% | เกราะสูงสุด: ${a.maxArmor}</div>
+            </div>
+            <div class="shop-item-footer">
+                <span class="price-tag">${a.unlocked ? 'ปลดล็อกแล้ว' : `💰 ${a.cost}`}</span>
+                ${a.unlocked 
+                    ? `<button class="action-btn" onclick="equipArmor(${idx})">${isEquipped ? 'ใช้งานอยู่' : 'สวมใส่'}</button>`
+                    : `<button class="action-btn" onclick="buyArmor(${idx})">อัปเกรด</button>`}
+            </div>
+        `;
+        aList.appendChild(div);
+    });
+}
+
+function buyWeapon(idx) {
+    const w = WEAPONS[idx];
+    if (player.level < w.reqLevel) {
+        alert(`เลเวลของคุณไม่ถึง (ต้องการ Lv.${w.reqLevel})`);
+        return;
+    }
+    if (player.credits >= w.cost) {
+        player.credits -= w.cost;
+        w.unlocked = true;
+        player.currentWeaponIdx = idx;
+        renderShop();
+        updateHUD();
+    } else {
+        alert("เครดิตไม่เพียงพอ!");
+    }
+}
+
+function equipWeapon(idx) {
+    player.currentWeaponIdx = idx;
+    renderShop();
+    updateHUD();
+}
+
+function buyArmor(idx) {
+    const a = ARMORS[idx];
+    if (player.credits >= a.cost) {
+        player.credits -= a.cost;
+        a.unlocked = true;
+        player.currentArmorIdx = idx;
+        player.armor = a.maxArmor;
+        renderShop();
+        updateHUD();
+    } else {
+        alert("เครดิตไม่เพียงพอ!");
+    }
+}
+
+function equipArmor(idx) {
+    player.currentArmorIdx = idx;
+    player.armor = ARMORS[idx].maxArmor;
+    renderShop();
+    updateHUD();
+}
+
+// Raycasting Mouse to 3D Ground
+function onMouseMove(event) {
+    mouseVector.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouseVector.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouseVector, camera);
+    const intersects = raycaster.intersectObject(plane);
+    if (intersects.length > 0) {
+        mousePos3D.copy(intersects[0].point);
+    }
+}
+
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+// Start Game Engine
+window.onload = initThree;
+</script>
+</body>
+</html>
